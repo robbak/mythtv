@@ -2790,7 +2790,7 @@ int HLSRingBuffer::DurationForBytes(uint size)
     return (int)((size * 1000.0) / byterate);
 }
 
-long long HLSRingBuffer::GetRealFileSize(void) const
+long long HLSRingBuffer::GetRealFileSizeInternal(void) const
 {
     QReadLocker lock(&rwlock);
     return SizeMedia();

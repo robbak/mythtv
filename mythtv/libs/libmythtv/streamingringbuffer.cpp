@@ -127,7 +127,7 @@ int StreamingRingBuffer::safe_read(void *data, uint sz)
     return len;
 }
 
-long long StreamingRingBuffer::GetRealFileSize(void) const
+long long StreamingRingBuffer::GetRealFileSizeInternal(void) const
 {
     long long result = -1;
     rwlock.lockForRead();

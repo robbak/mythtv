@@ -206,13 +206,15 @@ RingBuffer::RingBuffer(RingBufferType rbtype) :
     request_pause(false),     paused(false),
     ateof(false),             readsallowed(false),
     setswitchtonext(false),
-    rawbitrate(800),          playspeed(1.0f),
+    rawbitrate(8000),         playspeed(1.0f),
     fill_threshold(65536),    fill_min(-1),
     readblocksize(CHUNK),     wanttoread(0),
     numfailures(0),           commserror(false),
     oldfile(false),           livetvchain(NULL),
     ignoreliveeof(false),     readAdjust(0),
-    bitrateMonitorEnabled(false)
+    readOffset(0),            readInternalMode(false),
+    bitrateMonitorEnabled(false),
+    bitrateInitialized(false)
 {
     {
         QMutexLocker locker(&subExtLock);
@@ -319,6 +321,7 @@ void RingBuffer::UpdateRawBitrate(uint raw_bitrate)
     rwlock.lockForWrite();
     rawbitrate = raw_bitrate;
     CalcReadAheadThresh();
+    bitrateInitialized = true;
     rwlock.unlock();
 }
 
@@ -391,11 +394,11 @@ void RingBuffer::CalcReadAheadThresh(void)
     }
     else
     {
-        readblocksize = max(rbs,readblocksize);
+        readblocksize = bitrateInitialized ? max(rbs,readblocksize) : rbs;
     }
 
     // minumum seconds of buffering before allowing read
-    float secs_min = 0.35;
+    float secs_min = 0.3;
     // set the minimum buffering before allowing ffmpeg read
     fill_min  = (uint) ((estbitrate * 1000 * secs_min) * 0.125f);
     // make this a multiple of ffmpeg block size..
@@ -474,6 +477,42 @@ int RingBuffer::ReadBufFree(void) const
 }
 
 /// \brief Returns number of bytes available for reading from buffer.
+int RingBuffer::GetReadBufAvail(void) const
+{
+    QReadLocker lock(&rwlock);
+
+    return ReadBufAvail();
+}
+
+long long RingBuffer::GetRealFileSize(void) const
+{
+    {
+        QReadLocker lock(&rwlock);
+        if (readInternalMode)
+        {
+            return ReadBufAvail();
+        }
+    }
+
+    return GetRealFileSizeInternal();
+}
+
+bool RingBuffer::SetReadInternalMode(bool mode)
+{
+    QWriteLocker lock(&rwlock);
+    bool old = readInternalMode;
+
+    readInternalMode = mode;
+
+    if (!mode)
+    {
+        // reset the read offset as we are exiting the internal read mode
+        readOffset = 0;
+    }
+    return old;
+}
+
+/// \brief Returns number of bytes available for reading from buffer.
 /// WARNING: Must be called with rwlock in locked state.
 int RingBuffer::ReadBufAvail(void) const
 {
@@ -501,6 +540,9 @@ void RingBuffer::ResetReadAhead(long long newinternal)
     LOG(VB_FILE, LOG_INFO, LOC +
         QString("ResetReadAhead(internalreadpos = %1->%2)")
             .arg(internalreadpos).arg(newinternal));
+
+    readInternalMode = false;
+    readOffset = 0;
 
     rbrlock.lockForWrite();
     rbwlock.lockForWrite();
@@ -1304,7 +1346,8 @@ int RingBuffer::ReadPriv(void *buf, int count, bool peek)
         return -1;
     }
 
-    if (request_pause || stopreads || !readaheadrunning || (ignorereadpos>=0))
+    if (!readInternalMode &&
+        (request_pause || stopreads || !readaheadrunning || (ignorereadpos>=0)))
     {
         rwlock.unlock();
         rwlock.lockForWrite();
@@ -1338,7 +1381,7 @@ int RingBuffer::ReadPriv(void *buf, int count, bool peek)
         return 0;
     }
 
-    if (!WaitForAvail(count))
+    if (!readInternalMode && !WaitForAvail(count))
     {
         LOG(VB_FILE, LOG_NOTICE, LOC + loc_desc + ": !WaitForAvail()");
         rwlock.unlock();
@@ -1350,7 +1393,7 @@ int RingBuffer::ReadPriv(void *buf, int count, bool peek)
         return 0;
     }
 
-    count = min(ReadBufAvail(), count);
+    count = min(ReadBufAvail() - readOffset, count);
 
     if (count <= 0)
     {
@@ -1362,32 +1405,48 @@ int RingBuffer::ReadPriv(void *buf, int count, bool peek)
         return count;
     }
 
-    if (peek)
+    if (peek || readInternalMode)
         rbrlock.lockForRead();
     else
         rbrlock.lockForWrite();
 
     LOG(VB_FILE, LOG_DEBUG, LOC + loc_desc + " -- copying data");
 
-    if (rbrpos + count > (int) bufferSize)
+    int rpos;
+    if (rbrpos + readOffset > bufferSize)
     {
-        int firstsize = bufferSize - rbrpos;
+        rpos = bufferSize - readOffset;
+    }
+    else
+    {
+        rpos = rbrpos + readOffset;
+    }
+    if (rpos + count > (int) bufferSize)
+    {
+        int firstsize = bufferSize - rpos;
         int secondsize = count - firstsize;
 
-        memcpy(buf, readAheadBuffer + rbrpos, firstsize);
+        memcpy(buf, readAheadBuffer + rpos, firstsize);
         memcpy((char *)buf + firstsize, readAheadBuffer, secondsize);
     }
     else
     {
-        memcpy(buf, readAheadBuffer + rbrpos, count);
+        memcpy(buf, readAheadBuffer + rpos, count);
     }
     LOG(VB_FILE, LOG_DEBUG, LOC + loc_desc + QString(" -- checksum %1")
             .arg(qChecksum((char*)buf,count)));
 
     if (!peek)
     {
-        rbrpos = (rbrpos + count) % bufferSize;
-        generalWait.wakeAll();
+        if (readInternalMode)
+        {
+            readOffset += count;
+        }
+        else
+        {
+            rbrpos = (rbrpos + count) % bufferSize;
+            generalWait.wakeAll();
+        }
     }
     rbrlock.unlock();
     rwlock.unlock();

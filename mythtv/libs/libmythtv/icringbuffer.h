@@ -19,13 +19,13 @@ class ICRingBuffer : public RingBuffer
     virtual bool OpenFile(const QString &url,
                           uint retry_ms = kDefaultOpenTimeout);
     virtual long long Seek(long long pos, int whence, bool has_lock);
-    virtual long long GetRealFileSize(void) const;
     virtual bool IsStreamed(void)       { return false;  }
     virtual bool IsSeekingAllowed(void) { return true; }
     virtual bool IsBookmarkAllowed(void) { return false; }
 
   protected:
     virtual int safe_read(void *data, uint sz);
+    virtual long long GetRealFileSizeInternal(void) const;
 
     // Operations
   public:

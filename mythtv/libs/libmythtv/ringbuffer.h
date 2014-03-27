@@ -81,7 +81,7 @@ class MTV_PUBLIC RingBuffer : protected MThread
     long long GetWritePosition(void) const;
     /// \brief Returns the size of the file we are reading/writing,
     ///        or -1 if the query fails.
-    virtual long long GetRealFileSize(void)  const { return -1; }
+    long long GetRealFileSize(void) const;
     bool      IsNearEnd(double fps, uint vvf) const;
     /// \brief Returns true if open for either reading or writing.
     virtual bool IsOpen(void) const = 0;
@@ -91,6 +91,11 @@ class MTV_PUBLIC RingBuffer : protected MThread
     virtual int  BestBufferSize(void)   { return 32768; }
     static QString BitrateToString(uint64_t rate, bool hz = false);
     RingBufferType GetType() const { return type; }
+
+    // LiveTV used utilities
+    int GetReadBufAvail() const;
+    bool SetReadInternalMode(bool mode);
+    bool IsReadInternalMode(void) { return readInternalMode; }
 
     // DVD and bluray methods
     bool IsDisc(void) const { return IsDVD() || IsBD(); }
@@ -176,6 +181,7 @@ class MTV_PUBLIC RingBuffer : protected MThread
     int ReadDirect(void *buf, int count, bool peek);
     bool WaitForReadsAllowed(void);
     bool WaitForAvail(int count);
+    virtual long long GetRealFileSizeInternal(void) const { return -1; }
 
     int ReadBufFree(void) const;
     int ReadBufAvail(void) const;
@@ -245,6 +251,10 @@ class MTV_PUBLIC RingBuffer : protected MThread
 
     long long readAdjust;         // protected by rwlock
 
+    // Internal RingBuffer Method
+    int       readOffset;         // protected by rwlock
+    bool      readInternalMode;   // protected by rwlock
+
     // bitrate monitors
     bool              bitrateMonitorEnabled;
     QMutex            decoderReadLock;
@@ -268,6 +278,7 @@ class MTV_PUBLIC RingBuffer : protected MThread
 
   private:
     static bool gAVformat_net_initialised;
+    bool bitrateInitialized;
 };
 
 #endif // _RINGBUFFER_H_

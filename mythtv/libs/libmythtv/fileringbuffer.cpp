@@ -381,7 +381,6 @@ bool FileRingBuffer::OpenFile(const QString &lfilename, uint retry_ms)
     commserror = false;
     numfailures = 0;
 
-    rawbitrate = 800;
     CalcReadAheadThresh();
 
     bool ok = fd2 >= 0 || remotefile;
@@ -587,7 +586,7 @@ long long FileRingBuffer::GetReadPosition(void) const
     return ret;
 }
 
-long long FileRingBuffer::GetRealFileSize(void) const
+long long FileRingBuffer::GetRealFileSizeInternal(void) const
 {
     rwlock.lockForRead();
     long long ret = -1;
@@ -659,7 +658,6 @@ long long FileRingBuffer::Seek(long long pos, int whence, bool has_lock)
     // only valid for SEEK_SET & SEEK_CUR
     long long new_pos = (SEEK_SET==whence) ? pos : readpos + pos;
 
-#if 1
     // Optimize short seeks where the data for
     // them is in our ringbuffer already.
     if (readaheadrunning &&
@@ -673,15 +671,16 @@ long long FileRingBuffer::Seek(long long pos, int whence, bool has_lock)
                 .arg(rbrpos).arg(rbwpos)
                 .arg(readpos).arg(internalreadpos));
         bool used_opt = false;
-        if ((new_pos < readpos))
+        if ((new_pos < readpos - readOffset))
         {
+            // Seeking to earlier than current buffer's start, but still in buffer
             int min_safety = max(fill_min, readblocksize);
             int free = ((rbwpos >= rbrpos) ?
                         rbrpos + bufferSize : rbrpos) - rbwpos;
             int internal_backbuf =
                 (rbwpos >= rbrpos) ? rbrpos : rbrpos - rbwpos;
             internal_backbuf = min(internal_backbuf, free - min_safety);
-            long long sba = readpos - new_pos;
+            long long sba = (readpos - readOffset) - new_pos;
             LOG(VB_FILE, LOG_INFO, LOC +
                 QString("Seek(): internal_backbuf: %1 sba: %2")
                     .arg(internal_backbuf).arg(sba));
@@ -689,6 +688,7 @@ long long FileRingBuffer::Seek(long long pos, int whence, bool has_lock)
             {
                 rbrpos = (rbrpos>=sba) ? rbrpos - sba :
                     bufferSize + rbrpos - sba;
+                readOffset = 0;
                 used_opt = true;
                 LOG(VB_FILE, LOG_INFO, LOC +
                     QString("Seek(): OPT1 rbrpos: %1 rbwpos: %2"
@@ -697,9 +697,16 @@ long long FileRingBuffer::Seek(long long pos, int whence, bool has_lock)
                         .arg(new_pos).arg(internalreadpos));
             }
         }
-        else if ((new_pos >= readpos) && (new_pos <= internalreadpos))
+        else if ((new_pos >= (readpos - readOffset)) && (new_pos <= internalreadpos))
         {
-            rbrpos = (rbrpos + (new_pos - readpos)) % bufferSize;
+            if (readInternalMode)
+            {
+                readOffset += new_pos - readpos;
+            }
+            else
+            {
+                rbrpos = (rbrpos + (new_pos - readpos)) % bufferSize;
+            }
             used_opt = true;
             LOG(VB_FILE, LOG_INFO, LOC +
                 QString("Seek(): OPT2 rbrpos: %1 sba: %2")
@@ -710,6 +717,15 @@ long long FileRingBuffer::Seek(long long pos, int whence, bool has_lock)
 
         if (used_opt)
         {
+            if (readInternalMode)
+            {
+                ateof = false;
+                readpos = new_pos;
+                poslock.unlock();
+                if (!has_lock)
+                    rwlock.unlock();
+                return new_pos;
+            }
             if (ignorereadpos >= 0)
             {
                 // seek should always succeed since we were at this position
@@ -749,7 +765,6 @@ long long FileRingBuffer::Seek(long long pos, int whence, bool has_lock)
             return new_pos;
         }
     }
-#endif
 
 #if 1
     // This optimizes the seek end-250000, read, seek 0, read portion 

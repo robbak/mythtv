@@ -19,13 +19,13 @@ class StreamingRingBuffer : public RingBuffer
     virtual bool OpenFile(const QString &lfilename,
                           uint retry_ms = kDefaultOpenTimeout);
     virtual long long Seek(long long pos, int whence, bool has_lock);
-    virtual long long GetRealFileSize(void) const;
     virtual bool IsStreamed(void)       { return m_streamed;   }
     virtual bool IsSeekingAllowed(void) { return m_allowSeeks; }
     virtual bool IsBookmarkAllowed(void) { return false; }
 
   protected:
     virtual int safe_read(void *data, uint sz);
+    virtual long long GetRealFileSizeInternal(void) const;
 
   private:
     URLContext *m_context;

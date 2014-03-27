@@ -855,7 +855,8 @@ void AvFormatDecoder::InitByteContext(void)
                                                      AVFRingBuffer::AVF_Write_Packet,
                                                      AVFRingBuffer::AVF_Seek_Packet);
 
-    ic->pb->seekable            = !streamed;
+    // We can always seek during LiveTV
+    ic->pb->seekable            = !streamed || ringBuffer->LiveMode();
     LOG(VB_PLAYBACK, LOG_INFO, LOC + QString("Buffer size: %1, streamed %2")
         .arg(buf_size).arg(streamed));
 }
@@ -912,10 +913,8 @@ int AvFormatDecoder::FindStreamInfo(void)
     // Suppress ffmpeg logging unless "-v libav --loglevel debug"
     if (!VERBOSE_LEVEL_CHECK(VB_LIBAV, LOG_DEBUG))
         silence_ffmpeg_logging = true;
-    avfRingBuffer->SetInInit(ringBuffer->IsStreamed());
     int retval = avformat_find_stream_info(ic, NULL);
     silence_ffmpeg_logging = false;
-    avfRingBuffer->SetInInit(false);
     return retval;
 }
 
@@ -960,6 +959,8 @@ int AvFormatDecoder::OpenFile(RingBuffer *rbuffer, bool novideo,
         probe.buf_size = testbufsize;
     else
         probe.buf_size = kDecoderProbeBufferSize - AVPROBE_PADDING_SIZE;
+
+    avfRingBuffer->SetInInit(ringBuffer->LiveMode());
 
     fmt = av_probe_input_format(&probe, true);
     if (!fmt)
@@ -1020,6 +1021,7 @@ int AvFormatDecoder::OpenFile(RingBuffer *rbuffer, bool novideo,
     }
 
     int ret = FindStreamInfo();
+    avfRingBuffer->SetInInit(false);
     if (ret < 0)
     {
         LOG(VB_GENERAL, LOG_ERR, LOC + "Could not find codec parameters. " +

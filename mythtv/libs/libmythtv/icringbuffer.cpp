@@ -159,7 +159,7 @@ int ICRingBuffer::safe_read(void *data, uint sz)
     return m_stream ? m_stream->safe_read(data, sz, 1000) : (ateof = true, 0);
 }
 
-long long ICRingBuffer::GetRealFileSize(void) const
+long long ICRingBuffer::GetRealFileSizeInternal(void) const
 {
     return m_stream ? m_stream->GetSize() : -1;
 }

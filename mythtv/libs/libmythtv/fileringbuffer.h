@@ -15,7 +15,6 @@ class MTV_PUBLIC FileRingBuffer : public RingBuffer
     // Gets
     virtual bool      IsOpen(void)          const;
     virtual long long GetReadPosition(void) const;
-    virtual long long GetRealFileSize(void) const;
 
     // General Commands
     virtual bool OpenFile(const QString &lfilename,
@@ -39,4 +38,5 @@ class MTV_PUBLIC FileRingBuffer : public RingBuffer
     }
     int safe_read(int fd, void *data, uint sz);
     int safe_read(RemoteFile *rf, void *data, uint sz);
+    virtual long long GetRealFileSizeInternal(void) const;
 };
