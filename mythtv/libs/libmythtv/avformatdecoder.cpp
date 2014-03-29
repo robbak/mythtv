@@ -839,7 +839,7 @@ bool AvFormatDecoder::CanHandle(char testbuf[kDecoderProbeBufferSize],
     return false;
 }
 
-void AvFormatDecoder::InitByteContext(void)
+void AvFormatDecoder::InitByteContext(bool forceseek)
 {
     int buf_size                = ringBuffer->BestBufferSize();
     int streamed                = ringBuffer->IsStreamed();
@@ -856,9 +856,9 @@ void AvFormatDecoder::InitByteContext(void)
                                                      AVFRingBuffer::AVF_Seek_Packet);
 
     // We can always seek during LiveTV
-    ic->pb->seekable            = !streamed || ringBuffer->LiveMode();
-    LOG(VB_PLAYBACK, LOG_INFO, LOC + QString("Buffer size: %1, streamed %2")
-        .arg(buf_size).arg(streamed));
+    ic->pb->seekable            = !streamed || forceseek;
+    LOG(VB_PLAYBACK, LOG_INFO, LOC + QString("Buffer size: %1 streamed %2 seekable %3")
+        .arg(buf_size).arg(streamed).arg(ic->pb->seekable));
 }
 
 extern "C" void HandleStreamChange(void *data)
@@ -960,7 +960,7 @@ int AvFormatDecoder::OpenFile(RingBuffer *rbuffer, bool novideo,
     else
         probe.buf_size = kDecoderProbeBufferSize - AVPROBE_PADDING_SIZE;
 
-    avfRingBuffer->SetInInit(ringBuffer->LiveMode());
+    LOG(VB_PLAYBACK, LOG_DEBUG, LOC + "OpenFile -- begin");
 
     fmt = av_probe_input_format(&probe, true);
     if (!fmt)
@@ -982,7 +982,43 @@ int AvFormatDecoder::OpenFile(RingBuffer *rbuffer, bool novideo,
     }
 
     int err;
-    while (true)
+    bool found = false;
+
+    if (livetv)
+    {
+        // We try to open the file for up to 1.5 second using only only buffer in memory
+        MythTimer timer; timer.start();
+
+        avfRingBuffer->SetInInit(true);
+
+        while (!found && timer.elapsed() < 1500)
+        {
+            ic = avformat_alloc_context();
+            if (!ic)
+            {
+                LOG(VB_GENERAL, LOG_ERR, LOC + "Could not allocate format context.");
+                return -1;
+            }
+
+            InitByteContext(true);
+
+            err = avformat_open_input(&ic, filename, fmt, NULL);
+            if (err < 0)
+            {
+                usleep(50 * 1000);  // wait 50ms
+                continue;
+            }
+            found = true;
+        }
+
+        if (!found)
+        {
+            avfRingBuffer->SetInInit(false);
+        }
+    }
+
+    // If we haven't been opened to open the file so far, revert to old method
+    while (!found)
     {
         ic = avformat_alloc_context();
         if (!ic)
@@ -1011,7 +1047,7 @@ int AvFormatDecoder::OpenFile(RingBuffer *rbuffer, bool novideo,
                 break;
             }
         }
-        break;
+        found = true;
     }
     if (err < 0)
     {
