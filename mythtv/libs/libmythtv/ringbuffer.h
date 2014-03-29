@@ -132,8 +132,7 @@ class MTV_PUBLIC RingBuffer : protected MThread
                bool resetInternal = false);
 
     /// \brief Seeks to a particular position in the file.
-    virtual long long Seek(
-        long long pos, int whence, bool has_lock = false) = 0;
+    long long Seek(long long pos, int whence, bool has_lock = false);
 
     // Pause commands
     void Pause(void);
@@ -182,6 +181,7 @@ class MTV_PUBLIC RingBuffer : protected MThread
     bool WaitForReadsAllowed(void);
     bool WaitForAvail(int count);
     virtual long long GetRealFileSizeInternal(void) const { return -1; }
+    virtual long long SeekInternal(long long pos, int whence) = 0;
 
     int ReadBufFree(void) const;
     int ReadBufAvail(void) const;

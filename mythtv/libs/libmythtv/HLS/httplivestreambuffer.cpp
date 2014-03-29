@@ -2796,7 +2796,7 @@ long long HLSRingBuffer::GetRealFileSizeInternal(void) const
     return SizeMedia();
 }
 
-long long HLSRingBuffer::Seek(long long pos, int whence, bool has_lock)
+long long HLSRingBuffer::SeekInternal(long long pos, int whence)
 {
     if (m_error)
         return -1;

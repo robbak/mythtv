@@ -497,6 +497,52 @@ long long RingBuffer::GetRealFileSize(void) const
     return GetRealFileSizeInternal();
 }
 
+long long RingBuffer::Seek(long long pos, int whence, bool has_lock)
+{
+    LOG(VB_FILE, LOG_INFO, LOC + QString("Seek(%1,%2,%3)")
+        .arg(pos).arg((SEEK_SET==whence)?"SEEK_SET":
+                      ((SEEK_CUR==whence)?"SEEK_CUR":"SEEK_END"))
+        .arg(has_lock?"locked":"unlocked"));
+
+    if (!has_lock)
+    {
+        rwlock.lockForWrite();
+    }
+
+    long long ret;
+
+    if (readInternalMode)
+    {
+        poslock.lockForWrite();
+        // only valid for SEEK_SET & SEEK_CUR
+        switch (whence)
+        {
+            case SEEK_SET:
+                readpos = pos;
+                break;
+            case SEEK_CUR:
+                readpos += pos;
+                break;
+            case SEEK_END:
+                readpos = ReadBufAvail() - pos;
+                break;
+        }
+        readOffset = readpos;
+        poslock.unlock();
+        ret = readpos;
+    }
+    else
+    {
+        ret = SeekInternal(pos, whence);
+    }
+
+    if (!has_lock)
+    {
+        rwlock.unlock();
+    }
+    return ret;
+}
+
 bool RingBuffer::SetReadInternalMode(bool mode)
 {
     QWriteLocker lock(&rwlock);
@@ -509,6 +555,10 @@ bool RingBuffer::SetReadInternalMode(bool mode)
         // reset the read offset as we are exiting the internal read mode
         readOffset = 0;
     }
+
+    LOG(VB_FILE, LOG_DEBUG, LOC +
+        QString("SetReadInternalMode: %1").arg(mode ? "on" : "off"));
+
     return old;
 }
 
@@ -1393,7 +1443,14 @@ int RingBuffer::ReadPriv(void *buf, int count, bool peek)
         return 0;
     }
 
-    count = min(ReadBufAvail() - readOffset, count);
+    int avail = ReadBufAvail();
+    if (readInternalMode)
+    {
+        LOG(VB_FILE, LOG_DEBUG, LOC +
+            QString("ReadPriv: %1 bytes available, %2 left")
+            .arg(avail).arg(avail-readOffset));
+    }
+    count = min(avail - readOffset, count);
 
     if (count <= 0)
     {

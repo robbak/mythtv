@@ -86,15 +86,10 @@ long long ICRingBuffer::GetReadPosition(void) const
     return m_stream ? m_stream->GetReadPosition() : 0;
 }
 
-long long ICRingBuffer::Seek(long long pos, int whence, bool has_lock)
+long long ICRingBuffer::SeekInternal(long long pos, int whence)
 {
     if (!m_stream)
         return -1;
-
-    // lockForWrite takes priority over lockForRead, so this will
-    // take priority over the lockForRead in the read ahead thread.
-    if (!has_lock)
-        rwlock.lockForWrite();
 
     poslock.lockForWrite();
 
@@ -108,8 +103,6 @@ long long ICRingBuffer::Seek(long long pos, int whence, bool has_lock)
         ret = readpos;
 
         poslock.unlock();
-        if (!has_lock)
-            rwlock.unlock();
 
         return ret;
     }
@@ -147,9 +140,6 @@ err:
     poslock.unlock();
 
     generalWait.wakeAll();
-
-    if (!has_lock)
-        rwlock.unlock();
 
     return ret;
 }
