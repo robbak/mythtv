@@ -552,6 +552,9 @@ bool RingBuffer::SetReadInternalMode(bool mode)
 
     if (!mode)
     {
+        poslock.lockForWrite();
+        readpos = 0;
+        poslock.unlock();
         // reset the read offset as we are exiting the internal read mode
         readOffset = 0;
     }
