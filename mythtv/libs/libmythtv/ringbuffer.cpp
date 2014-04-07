@@ -1475,7 +1475,7 @@ int RingBuffer::ReadPriv(void *buf, int count, bool peek)
     int rpos;
     if (rbrpos + readOffset > bufferSize)
     {
-        rpos = bufferSize - readOffset;
+        rpos = (rbrpos + readOffset) - bufferSize;
     }
     else
     {
