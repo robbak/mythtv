@@ -24,9 +24,6 @@ MythComboBox::MythComboBox(bool rw, QWidget *parent, const char *name) :
 {
     setObjectName(name);
     setEditable(rw);
-#ifdef Q_OS_MAC
-    setStyleSheet("QComboBox { font: bold; } ");
-#endif
 }
 
 MythComboBox::~MythComboBox()
@@ -134,9 +131,6 @@ void MythComboBox::focusInEvent(QFocusEvent *e)
 
     QPalette palette;
     palette.setColor(backgroundRole(), highlight);
-#ifdef Q_OS_MAC
-    palette.setColor(QPalette::HighlightedText, Qt::white);
-#endif
     setPalette(palette);
 
     if (lineEdit())
@@ -176,12 +170,6 @@ MythCheckBox::MythCheckBox(QWidget *parent, const char *name)
     : QCheckBox(parent)
 {
     setObjectName(name);
-#ifdef Q_OS_MAC
-    QPalette p = palette();
-    p.setColor(QPalette::Active, QPalette::WindowText, Qt::white);
-    p.setColor(QPalette::Inactive, QPalette::WindowText, Qt::white);
-    setPalette(p);
-#endif
 }
 
 MythCheckBox::MythCheckBox(const QString &text,
@@ -189,12 +177,6 @@ MythCheckBox::MythCheckBox(const QString &text,
     : QCheckBox(text, parent)
 {
     setObjectName(name);
-#ifdef Q_OS_MAC
-    QPalette p = palette();
-    p.setColor(QPalette::Active, QPalette::WindowText, Qt::white);
-    p.setColor(QPalette::Inactive, QPalette::WindowText, Qt::white);
-    setPalette(p);
-#endif
 };
 
 void MythCheckBox::keyPressEvent(QKeyEvent* e)
@@ -238,10 +220,6 @@ void MythCheckBox::focusInEvent(QFocusEvent *e)
     QColor highlight = palette().color(QPalette::Highlight);
     QPalette palette;
     palette.setColor(backgroundRole(), highlight);
-#ifdef Q_OS_MAC
-    palette.setColor(QPalette::Active, QPalette::WindowText, Qt::white);
-    palette.setColor(QPalette::Inactive, QPalette::WindowText, Qt::white);
-#endif
     setPalette(palette);
 
     QCheckBox::focusInEvent(e);
@@ -249,12 +227,7 @@ void MythCheckBox::focusInEvent(QFocusEvent *e)
 
 void MythCheckBox::focusOutEvent(QFocusEvent *e)
 {
-    QPalette palette;
-#ifdef Q_OS_MAC
-    palette.setColor(QPalette::Active, QPalette::WindowText, Qt::white);
-    palette.setColor(QPalette::Inactive, QPalette::WindowText, Qt::white);
-#endif
-    setPalette(palette);
+    setPalette(QPalette());
     QCheckBox::focusOutEvent(e);
 }
 
@@ -262,12 +235,6 @@ MythRadioButton:: MythRadioButton(QWidget* parent, const char* name)
     : QRadioButton(parent)
 {
     setObjectName(name);
-#ifdef Q_OS_MAC
-    QPalette p = palette();
-    p.setColor(QPalette::Active, QPalette::WindowText, Qt::white);
-    p.setColor(QPalette::Inactive, QPalette::WindowText, Qt::white);
-    setPalette(p);
-#endif
 };
 
 void MythRadioButton::keyPressEvent(QKeyEvent* e)
@@ -311,10 +278,6 @@ void MythRadioButton::focusInEvent(QFocusEvent *e)
 
     QPalette palette;
     palette.setColor(backgroundRole(), highlight);
-#ifdef Q_OS_MAC
-    palette.setColor(QPalette::Active, QPalette::WindowText, Qt::white);
-    palette.setColor(QPalette::Inactive, QPalette::WindowText, Qt::white);
-#endif
     setPalette(palette);
 
     QRadioButton::focusInEvent(e);
@@ -322,13 +285,7 @@ void MythRadioButton::focusInEvent(QFocusEvent *e)
 
 void MythRadioButton::focusOutEvent(QFocusEvent *e)
 {
-    QPalette palette;
-#ifdef Q_OS_MAC
-    palette.setColor(QPalette::Active, QPalette::WindowText, Qt::white);
-    palette.setColor(QPalette::Inactive, QPalette::WindowText, Qt::white);
-#endif
-    setPalette(palette);
-
+    setPalette(QPalette());
     QRadioButton::focusOutEvent(e);
 }
 
@@ -339,9 +296,6 @@ MythSpinBox::MythSpinBox(QWidget* parent, const char* name,
     setObjectName(name);
     if (allowsinglestep)
         setSingleStep(10);
-#ifdef Q_OS_MAC
-    setStyleSheet("QSpinBox { font: bold; }");
-#endif
 }
 
 void MythSpinBox::setHelpText(const QString &help)
@@ -408,7 +362,7 @@ MythSlider::MythSlider(QWidget* parent, const char* name)
     : QSlider(parent)
 {
     setObjectName(name);
-};
+}
 
 void MythSlider::keyPressEvent(QKeyEvent* e)
 {
@@ -471,11 +425,6 @@ MythLineEdit::MythLineEdit(QWidget *parent, const char *name) :
     helptext(QString::null), rw(true)
 {
     setObjectName(name);
-#ifdef Q_OS_MAC
-    setStyleSheet("QLineEdit { font: bold; } "
-                  "QLineEdit:focus { color : white; } "
-                  );
-#endif
 }
 
 MythLineEdit::MythLineEdit(
@@ -484,11 +433,6 @@ MythLineEdit::MythLineEdit(
     helptext(QString::null), rw(true)
 {
     setObjectName(name);
-#ifdef Q_OS_MAC
-    setStyleSheet("QLineEdit { font: bold; } "
-                  "QLineEdit:focus { color : white; } "
-                  );
-#endif
 }
 
 MythLineEdit::~MythLineEdit()
@@ -1150,9 +1094,6 @@ MythPushButton::MythPushButton(QWidget *parent, const char *name)
 {
     setObjectName(name);
     setCheckable(false);
-#ifdef Q_OS_MAC
-    setStyleSheet("QPushButton:focus { color : white; }");
-#endif
 }
 
 MythPushButton::MythPushButton(const QString &text, QWidget *parent)
@@ -1160,9 +1101,6 @@ MythPushButton::MythPushButton(const QString &text, QWidget *parent)
 {
     setObjectName("MythPushButton");
     setCheckable(false);
-#ifdef Q_OS_MAC
-    setStyleSheet("QPushButton:focus { color : white; }");
-#endif
 }
 
 MythPushButton::MythPushButton(const QString &ontext, const QString &offtext,
@@ -1180,9 +1118,6 @@ MythPushButton::MythPushButton(const QString &ontext, const QString &offtext,
         setText(offText);
 
     setChecked(isOn);
-#ifdef Q_OS_MAC
-    setStyleSheet("QPushButton:focus { color : white; }");
-#endif
 }
 
 void MythPushButton::setHelpText(const QString &help)
@@ -1261,10 +1196,6 @@ void MythPushButton::focusInEvent(QFocusEvent *e)
     QColor highlight = palette().color(QPalette::Highlight);
     QPalette palette;
     palette.setColor(backgroundRole(), highlight);
-#ifdef Q_OS_MAC
-    palette.setColor(QPalette::Active, QPalette::WindowText, Qt::white);
-    palette.setColor(QPalette::Inactive, QPalette::WindowText, Qt::white);
-#endif
     setPalette(palette);
 
     QPushButton::focusInEvent(e);
@@ -1545,27 +1476,18 @@ MythLabel::MythLabel(QWidget* parent, const char* name)
     : QLabel(parent)
 {
     setObjectName(name);
-#ifdef Q_OS_MAC
-    setStyleSheet("QLabel { color : white; }");
-#endif
 }
 
 MythLabel::MythLabel(const QString& text, QWidget* parent, const char* name)
     : QLabel(text, parent)
 {
     setObjectName(name);
-#ifdef Q_OS_MAC
-    setStyleSheet("QLabel { color : white; }");
-#endif
 }
 
 MythGroupBox::MythGroupBox(QWidget* parent, const char* name)
     : QGroupBox(parent)
 {
     setObjectName(name);
-#ifdef Q_OS_MAC
-    setStyleSheet("QGroupBox { color : white; }");
-#endif
 }
 
 MythGroupBox::MythGroupBox(const QString& text, QWidget* parent,
@@ -1573,9 +1495,6 @@ MythGroupBox::MythGroupBox(const QString& text, QWidget* parent,
     : QGroupBox(text, parent)
 {
     setObjectName(name);
-#ifdef Q_OS_MAC
-    setStyleSheet("QGroupBox { color : white; }");
-#endif
 }
 
 /* vim: set expandtab tabstop=4 shiftwidth=4: */
