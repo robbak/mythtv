@@ -548,13 +548,20 @@ bool RingBuffer::SetReadInternalMode(bool mode)
     QWriteLocker lock(&rwlock);
     bool old = readInternalMode;
 
+    if (mode == old)
+    {
+        return old;
+    }
+
     readInternalMode = mode;
 
     if (!mode)
     {
-        poslock.lockForWrite();
-        readpos = 0;
-        poslock.unlock();
+        // adjust real read position in ringbuffer
+        rbrlock.lockForWrite();
+        rbrpos = (rbrpos + readOffset) % bufferSize;
+        generalWait.wakeAll();
+        rbrlock.unlock();
         // reset the read offset as we are exiting the internal read mode
         readOffset = 0;
     }
