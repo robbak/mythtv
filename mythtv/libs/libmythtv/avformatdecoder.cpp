@@ -1064,6 +1064,9 @@ int AvFormatDecoder::OpenFile(RingBuffer *rbuffer, bool novideo,
             err = avformat_open_input(&ic, filename, fmt, NULL);
             if (err < 0)
             {
+                LOG(VB_PLAYBACK, LOG_DEBUG, LOC +
+                    QString("avformat_open_input failed for in ram data after %1ms, retrying in 50ms")
+                    .arg(timer.elapsed()));
                 usleep(50 * 1000);  // wait 50ms
                 continue;
             }
@@ -1072,6 +1075,9 @@ int AvFormatDecoder::OpenFile(RingBuffer *rbuffer, bool novideo,
             if (FindStreamInfo() < 0)
             {
                 avformat_close_input(&ic);
+                LOG(VB_PLAYBACK, LOG_DEBUG, LOC +
+                    QString("FindStreamInfo failed for in ram data after %1ms, retrying in 50ms")
+                    .arg(timer.elapsed()));
                 usleep(50 * 1000);  // wait 50ms
                 continue;
             }
@@ -1084,6 +1090,9 @@ int AvFormatDecoder::OpenFile(RingBuffer *rbuffer, bool novideo,
                 {
                     avformat_close_input(&ic);
                     found = false;
+                    LOG(VB_PLAYBACK, LOG_DEBUG, LOC +
+                        QString("Invalid streams found in ram data after %1ms, retrying in 50ms")
+                        .arg(timer.elapsed()));
                     usleep(50 * 1000);  // wait 50ms
                     break;
                 }
@@ -1092,6 +1101,12 @@ int AvFormatDecoder::OpenFile(RingBuffer *rbuffer, bool novideo,
 
         avfRingBuffer->SetInInit(false);
 
+        if (!found)
+        {
+            LOG(VB_PLAYBACK, LOG_WARNING, LOC +
+                QString("No streams found in ram data after %1ms, defaulting to in-file")
+                .arg(timer.elapsed()));
+        }
         scanned = found;
     }
 
