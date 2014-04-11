@@ -1090,15 +1090,12 @@ int AvFormatDecoder::OpenFile(RingBuffer *rbuffer, bool novideo,
             }
         }
 
-        if (!found)
-        {
-            avfRingBuffer->SetInInit(false);
-        }
+        avfRingBuffer->SetInInit(false);
 
         scanned = found;
     }
 
-    // If we haven't been opened to open the file so far, revert to old method
+    // If we haven't opened the file so far, revert to old method
     while (!found)
     {
         ic = avformat_alloc_context();
@@ -1141,7 +1138,6 @@ int AvFormatDecoder::OpenFile(RingBuffer *rbuffer, bool novideo,
     if (!scanned)
     {
         int ret = FindStreamInfo();
-        avfRingBuffer->SetInInit(false);
         if (ret < 0)
         {
             LOG(VB_GENERAL, LOG_ERR, LOC + "Could not find codec parameters. " +
@@ -1151,6 +1147,7 @@ int AvFormatDecoder::OpenFile(RingBuffer *rbuffer, bool novideo,
             return -1;
         }
     }
+
     ic->streams_changed = HandleStreamChange;
     if (ringBuffer->IsDVD())
         ic->streams_changed = HandleDVDStreamChange;
