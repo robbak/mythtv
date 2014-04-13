@@ -1101,7 +1101,13 @@ int AvFormatDecoder::OpenFile(RingBuffer *rbuffer, bool novideo,
 
         avfRingBuffer->SetInInit(false);
 
-        if (!found)
+        if (found)
+        {
+            LOG(VB_PLAYBACK, LOG_INFO, LOC +
+                QString("File successfully opened after %1ms")
+                .arg(timer.elapsed()));
+        }
+        else
         {
             LOG(VB_PLAYBACK, LOG_WARNING, LOC +
                 QString("No streams found in ram data after %1ms, defaulting to in-file")
